@@ -1,0 +1,173 @@
+<template>
+  <div class="container-contract-verify">
+    <div class="input-verify">
+      <canvas id="canvas" @click="initCavans"></canvas>
+      <input type="text" v-model="verify" placeholder="请输入图形验证码" />
+    </div>
+    <div class="input-captcha">
+      <input type="text" v-model="captcha" placeholder="请输入验证码" />
+      <span :class="['btn-captcha',{disable: isTimerStart}]" @click="getCaptcha">{{ isTimerStart ? this.count + 's' : '获取验证码' }}</span>
+    </div>
+    <span :class="['btn-login']" @click='gotoDetail'>发起合同</span>
+  </div>
+</template>
+
+
+<script>
+  import util from '../../common/util.js';
+  import actions from '../../common/actions.js';
+  export default {
+    data () {
+      return {
+        dataVerify: '',
+        verify: '',
+        data: '',
+        captcha:'',
+        isTimerStart: false,
+        count: 90,
+      }
+    },
+    created(){
+      this.$store.commit('changeTitle','合同验证');
+      util.hideLoading();
+
+      // this.getCaptcha()
+    },
+    mounted(){
+      this.initCavans();
+    },
+    beforeDestroy(){
+      clearTimeout(this.Daojishi);
+    },
+    methods:{
+      randomColor(){
+        let r = Math.floor(Math.random() * 256);
+        let g = Math.floor(Math.random() * 256);
+        let b = Math.floor(Math.random() * 256);
+        return "rgb(" + r + "," + g + "," + b + ")";
+      },
+      initCavans(){
+        this.dataVerify = '';
+        let canvas = document.getElementById("canvas");
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        let context = canvas.getContext("2d");
+        let codeList = "a,b,c,d,e,f,g,h,i,j,k,m,n,p,q,r,s,t,u,v,w,x,y,z,A,B,C,E,F,G,H,J,K,L,M,N,P,Q,R,S,T,W,X,Y,Z,1,2,3,4,5,6,7,8,9,0".split(",");
+        for (let i = 0; i < 4; i++) {
+           let txt = codeList[Math.floor(Math.random() * codeList.length)];
+           let deg = Math.random() - 0.5;
+           let x =  canvas.width / 6 + canvas.width / 6 * i;
+           var y = canvas.height / 2 + Math.random() * canvas.height / 3;//文字在canvas上的y坐标
+           context.font = "bold 30px 微软雅黑";
+           context.translate(x, y);
+           context.rotate(deg);
+           context.fillStyle = this.randomColor();
+           context.fillText(txt, 0, 0);
+           context.rotate(-deg);
+           context.translate(-x, -y);
+           this.dataVerify += txt
+        }
+      },
+      getCaptcha(){
+        if(this.dataVerify && this.dataVerify.toUpperCase() == this.verify.toUpperCase()){
+          if(this.isCaptcha) return;
+          this.isCaptcha = true;
+          actions.getHtDx({phone: util.getLocalStorage('phone')}).then(res=>{
+              if(res.is_success == 0){
+                this.data = res.content;
+                this.isTimerStart = true;
+                this.timer();
+              }
+          })
+        }else{
+          util.showToast('图形验证码不正确');
+        }
+      },
+      gotoDetail(){
+        if(this.data && this.data == this.captcha ){
+          actions.lockHt({ fangwu_id: this.$route.query.id})
+          this.$router.replace({name:'liangshucontractDetail',query: { fwid: this.$route.query.id, type: 'add'}})
+        }else{
+          util.showToast('验证码不正确');
+        }
+      },
+      timer(){
+        this.Daojishi = setTimeout(() => {
+          if(this.count == 0){
+            this.isTimerStart = false;
+          }else{
+            this.count --;
+            this.timer();
+          }
+        },1000);
+      }
+    }
+}
+</script>
+
+<style lang="scss">
+  .container-contract-verify{
+    position: relative;
+    padding: 1rem 0.3rem 0;
+    .input-verify{
+      position:relative;
+      padding:0 0 0.6rem 2.5rem;
+      canvas{
+        position: absolute;
+        left: 0;
+        top:0;
+        width: 2.3rem;
+        height: 1rem;
+        background-color: #fff;
+      }
+      >input{
+        width: 100%;
+        height: 1rem;
+        border:1px solid #eee;
+        text-align: center;
+        font-size: 0.28rem;
+        width:4.4rem;
+      }
+    }
+    .input-captcha{
+      position:relative;
+      padding: 0 2.5rem 0.6rem 0;
+      >input{
+        width: 100%;
+        height: 1rem;
+        border:1px solid #eee;
+        text-align: center;
+        font-size: 0.28rem;
+      }
+      .btn-captcha{
+        position: absolute;
+        right: 0;
+        top:0;
+        width:2.3rem;
+        height:1rem;
+        line-height: 1rem;
+        font-size:0.28rem;
+        color:#fff;
+        background-color: #00ae66;
+        text-align:center;
+        &.disable{
+          background-color:rgba(0,174,102,0.45);
+        }
+      }
+    }
+    .btn-login{
+      display: block;
+      height:1rem;
+      line-height: 1rem;
+      font-size:0.36rem;
+      color:#fff;
+      background-color: #00ae66;
+      text-align:center;
+      &.disable{
+        pointer-events: none;
+        background-color:rgba(0,174,102,0.45);
+      }
+    }
+
+  }
+</style>
